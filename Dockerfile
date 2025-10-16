@@ -61,5 +61,5 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 # Expose port (Railway will set PORT env var)
 EXPOSE 8080
 
-# Run the application (use shell form to expand $PORT variable)
-CMD gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 600 app:app
+# Run the application using exec form with shell to expand PORT variable
+CMD ["/bin/sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 600 app:app"]
