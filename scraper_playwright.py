@@ -78,86 +78,62 @@ class XepelinPlaywrightScraper:
         Args:
             page: Página de Playwright
         """
-        max_clicks = 100  # Límite de seguridad para evitar loops infinitos
+        max_clicks = 100  # Límite de seguridad
         clicks = 0
-        no_change_count = 0  # Contador de iteraciones sin cambios
+        no_change_count = 0
         
-        print("🔄 Cargando todos los posts...")
+        print("🔄 Cargando posts dinámicamente...")
         
         while clicks < max_clicks:
             try:
                 # Contar posts antes del scroll
                 posts_before = page.locator('a[href*="/blog/"][href*="-"]').count()
-                print(f"   📊 Posts antes del scroll: {posts_before}")
                 
-                # Hacer scroll hasta el final de la página
+                # Hacer scroll hasta el final
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                print(f"   ⬇️  Scroll al final de la página...")
-                
-                # Esperar generosamente a que se cargue contenido
                 time.sleep(5)
                 
                 # Contar posts después del scroll
                 posts_after_scroll = page.locator('a[href*="/blog/"][href*="-"]').count()
-                print(f"   📊 Posts después del scroll: {posts_after_scroll}")
                 
-                # Si el scroll solo ya cargó más posts, continuar
+                # Si el scroll cargó más posts, continuar
                 if posts_after_scroll > posts_before:
-                    print(f"   ✅ Se cargaron {posts_after_scroll - posts_before} posts nuevos con el scroll")
+                    print(f"   ✅ +{posts_after_scroll - posts_before} posts cargados (total: {posts_after_scroll})")
                     no_change_count = 0
                     clicks += 1
                     continue
                 
                 # Buscar el botón "Cargar más"
                 load_more_button = page.locator('button:has-text("Cargar más")').first
-                button_count = load_more_button.count()
                 
-                print(f"   🔍 Botones 'Cargar más' encontrados: {button_count}")
-                
-                if button_count > 0:
+                if load_more_button.count() > 0:
                     try:
-                        # Verificar si es visible (sin timeout largo)
-                        is_visible = load_more_button.is_visible(timeout=2000)
-                        print(f"   👁️  Botón visible: {is_visible}")
-                        
-                        if is_visible:
-                            print(f"   🖱️  Haciendo clic en 'Cargar más' (intento #{clicks + 1})...")
-                            
-                            # Scroll al botón para asegurar que esté en viewport
+                        if load_more_button.is_visible(timeout=2000):
                             load_more_button.scroll_into_view_if_needed()
                             time.sleep(1)
-                            
-                            # Hacer clic
                             load_more_button.click()
-                            print(f"   ✅ Clic realizado")
-                            
-                            # Esperar a que carguen nuevos posts
                             time.sleep(5)
                             
                             # Verificar si se cargaron posts nuevos
                             posts_after_click = page.locator('a[href*="/blog/"][href*="-"]').count()
                             new_posts = posts_after_click - posts_after_scroll
-                            print(f"   📊 Posts después del clic: {posts_after_click} (+{new_posts})")
                             
                             if new_posts > 0:
+                                print(f"   ✅ Botón clickeado: +{new_posts} posts (total: {posts_after_click})")
                                 no_change_count = 0
                                 clicks += 1
                             else:
                                 no_change_count += 1
-                                print(f"   ⚠️  No se cargaron posts nuevos (contador: {no_change_count})")
                         else:
-                            print(f"   ℹ️  Botón encontrado pero no visible")
                             no_change_count += 1
-                    except Exception as e:
-                        print(f"   ⚠️  Error al interactuar con botón: {str(e)[:150]}")
+                    except Exception:
                         no_change_count += 1
                 else:
-                    print(f"   ℹ️  No se encontró botón 'Cargar más'")
                     no_change_count += 1
                 
                 # Si no hubo cambios en 3 iteraciones, terminar
                 if no_change_count >= 3:
-                    print(f"   ✅ Terminado: No hay más posts para cargar (sin cambios x{no_change_count})")
+                    print(f"   ✅ Carga completa - Total: {posts_after_scroll} posts encontrados")
                     break
                     
             except PlaywrightTimeout:
@@ -290,10 +266,6 @@ class XepelinPlaywrightScraper:
         
         # Buscar todos los enlaces a posts
         post_links = soup.find_all('a', href=lambda x: x and '/blog/' in x and '-' in x)
-        print(f"📊 Encontrados {len(post_links)} enlaces potenciales")
-        
-        # DEBUG: Print all candidate URLs before filtering
-        print(f"🔍 DEBUG: Raw candidate hrefs: {[link.get('href', '') for link in post_links]}")
         
         # Primero recolectar todas las URLs
         urls_to_process = []
@@ -333,8 +305,7 @@ class XepelinPlaywrightScraper:
             except Exception as e:
                 continue
         
-        print(f"📋 Procesando {len(urls_to_process)} posts individuales para extraer detalles completos...")
-        print(f"🔍 DEBUG: First 3 URLs: {urls_to_process[:3] if urls_to_process else 'None'}")
+        print(f"📋 Procesando {len(urls_to_process)} posts individuales...")
         
         # Ahora navegar a cada post para obtener detalles
         # IMPORTANTE: Reiniciar página cada 100 posts para liberar memoria
