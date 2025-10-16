@@ -39,10 +39,14 @@ def process_scraping_job(category: str, webhook_url: str, email: str,
         print(f"{'='*60}\n")
         
         # Initialize sheets manager
+        print("📊 Initializing Google Sheets manager...")
         sheets_manager = GoogleSheetsManager()
+        print("✅ Google Sheets manager initialized")
         
         # Scrape blog posts with Playwright
+        print("🎭 Initializing Playwright scraper...")
         with XepelinPlaywrightScraper() as scraper:
+            print("✅ Playwright scraper initialized")
             if scrape_all:
                 print("Scraping all categories...")
                 categories_data = scraper.scrape_all_categories()
@@ -69,12 +73,21 @@ def process_scraping_job(category: str, webhook_url: str, email: str,
                 result_sheet_url = sheets_manager.write_multiple_categories({category: posts}, sheet_url)
         
         # Send success response to webhook
-        print(f"\nScraping completed successfully!")
-        print(f"Google Sheet URL: {result_sheet_url}")
+        print(f"\n{'='*60}")
+        print(f"✅ SCRAPING COMPLETED SUCCESSFULLY!")
+        print(f"📊 Google Sheet URL: {result_sheet_url}")
+        print(f"📧 Sending webhook response...")
+        print(f"{'='*60}\n")
         send_webhook_response(webhook_url, email, result_sheet_url)
     
     except Exception as e:
-        print(f"Error in scraping job: {e}")
+        print(f"\n{'='*60}")
+        print(f"❌ ERROR IN SCRAPING JOB")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print(f"{'='*60}\n")
+        import traceback
+        traceback.print_exc()
         send_webhook_response(webhook_url, email, None, error=str(e))
 
 
@@ -162,6 +175,37 @@ def health():
         "status": "healthy",
         "message": "API is running"
     }), 200
+
+
+@app.route('/test-playwright', methods=['GET'])
+def test_playwright():
+    """Test if Playwright is working"""
+    try:
+        from playwright.sync_api import sync_playwright
+        
+        print("Testing Playwright installation...")
+        
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto("https://example.com", timeout=30000)
+            title = page.title()
+            browser.close()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Playwright is working correctly",
+            "test_page_title": title
+        }), 200
+    
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "status": "error",
+            "message": "Playwright test failed",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 
 @app.route('/categories', methods=['GET'])
