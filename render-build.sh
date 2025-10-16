@@ -15,9 +15,9 @@ rm -rf /opt/render/.cache/ms-playwright/* 2>/dev/null || true
 echo "🎭 Installing Playwright with Chromium..."
 echo "📍 Browser path: ${PLAYWRIGHT_BROWSERS_PATH:-/opt/render/.cache/ms-playwright}"
 
-# Install chromium browser - usa la variable de entorno de Render
-echo "Downloading Chromium browser..."
-python -m playwright install chromium --with-deps
+# Install chromium browser WITHOUT system dependencies (no sudo in Render Free)
+echo "Downloading Chromium browser (binary only)..."
+python -m playwright install chromium
 
 echo "📋 Verifying Chromium installation..."
 echo "Checking cache directory..."
