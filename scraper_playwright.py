@@ -247,9 +247,19 @@ class XepelinPlaywrightScraper:
                     else:
                         continue
                 
-                # Evitar páginas de categorías
-                if any(url.endswith(cat) for cat in ['/pymes', '/corporativos', '/educacion-financiera', 
-                                                       '/emprendedores', '/noticias', '/empresarios-exitosos', '/blog']):
+                # Evitar páginas de categorías (exactas, sin posts después)
+                # Agregar trailing slash para comparación exacta
+                url_clean = url.rstrip('/')
+                category_pages = [
+                    'https://xepelin.com/blog/pymes',
+                    'https://xepelin.com/blog/corporativos',
+                    'https://xepelin.com/blog/educacion-financiera',
+                    'https://xepelin.com/blog/emprendedores',
+                    'https://xepelin.com/blog/noticias',
+                    'https://xepelin.com/blog/empresarios-exitosos',
+                    'https://xepelin.com/blog'
+                ]
+                if url_clean in category_pages:
                     continue
                 
                 # Evitar duplicados
