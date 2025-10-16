@@ -273,6 +273,7 @@ class XepelinPlaywrightScraper:
                 continue
         
         print(f"📋 Procesando {len(urls_to_process)} posts individuales para extraer detalles completos...")
+        print(f"🔍 DEBUG: First 3 URLs: {urls_to_process[:3] if urls_to_process else 'None'}")
         
         # Ahora navegar a cada post para obtener detalles
         # IMPORTANTE: Reiniciar página cada 100 posts para liberar memoria
