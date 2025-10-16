@@ -42,8 +42,26 @@ class XepelinPlaywrightScraper:
     
     def __enter__(self):
         """Context manager para manejar el navegador."""
+        import os
+        
+        # Verificar que Playwright puede encontrar los browsers
+        browsers_path = os.environ.get('PLAYWRIGHT_BROWSERS_PATH', '/opt/render/.cache/ms-playwright')
+        if os.path.exists(browsers_path):
+            print(f"✅ Playwright browsers path exists: {browsers_path}")
+            # Listar contenido para debug
+            try:
+                import subprocess
+                result = subprocess.run(['ls', '-la', browsers_path], capture_output=True, text=True)
+                print(f"Contents:\n{result.stdout}")
+            except Exception as e:
+                print(f"Could not list directory: {e}")
+        else:
+            print(f"⚠️  WARNING: Playwright browsers path does not exist: {browsers_path}")
+        
         self.playwright = sync_playwright().start()
+        print("🎭 Launching Chromium browser...")
         self.browser = self.playwright.chromium.launch(headless=self.headless)
+        print("✅ Chromium browser launched successfully")
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
