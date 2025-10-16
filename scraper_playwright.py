@@ -93,6 +93,15 @@ class XepelinPlaywrightScraper:
                 all_buttons = page.locator('button').all()
                 print(f"   🔍 DEBUG: Total buttons found: {len(all_buttons)}")
                 
+                # DEBUG: Mostrar el texto de todos los botones
+                for idx, btn in enumerate(all_buttons):
+                    try:
+                        btn_text = btn.inner_text()
+                        btn_visible = btn.is_visible()
+                        print(f"   🔍 DEBUG: Button {idx+1}: text='{btn_text}', visible={btn_visible}")
+                    except Exception as e:
+                        print(f"   ⚠️  Button {idx+1}: Error reading - {str(e)}")
+                
                 # Buscar el botón "Cargar más" con diferentes estrategias
                 load_more_button = None
                 
