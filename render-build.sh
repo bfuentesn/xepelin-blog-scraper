@@ -6,29 +6,34 @@ echo "🔧 Installing Python dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-echo "🗑️  Cleaning old Playwright cache..."
-rm -rf /opt/render/.cache/ms-playwright 2>/dev/null || true
+echo "� Creating Playwright cache directory..."
+mkdir -p /opt/render/.cache/ms-playwright
+
+echo "�🗑️  Cleaning old Playwright cache..."
+rm -rf /opt/render/.cache/ms-playwright/* 2>/dev/null || true
 
 echo "🎭 Installing Playwright with Chromium..."
-# Set browser path BEFORE installing
-export PLAYWRIGHT_BROWSERS_PATH=/opt/render/.cache/ms-playwright
+echo "📍 Browser path: ${PLAYWRIGHT_BROWSERS_PATH:-/opt/render/.cache/ms-playwright}"
 
-# Install chromium browser
+# Install chromium browser - usa la variable de entorno de Render
 echo "Downloading Chromium browser..."
-python -m playwright install chromium
-
-# Try to install system dependencies (may fail on Render, that's ok)
-echo "🔧 Attempting to install system dependencies..."
-python -m playwright install-deps chromium 2>/dev/null || echo "⚠️  Skipping system deps (may not have sudo)"
+python -m playwright install chromium --with-deps
 
 echo "📋 Verifying Chromium installation..."
-if [ -d "/opt/render/.cache/ms-playwright/chromium-1091" ]; then
-    echo "✅ Chromium found at: /opt/render/.cache/ms-playwright/chromium-1091"
-    ls -la /opt/render/.cache/ms-playwright/chromium-1091/
+echo "Checking cache directory..."
+ls -la /opt/render/.cache/ 2>/dev/null || echo "⚠️  Cache directory doesn't exist"
+ls -la /opt/render/.cache/ms-playwright/ 2>/dev/null || echo "⚠️  Playwright cache doesn't exist"
+
+# Buscar chromium en cualquier ubicación
+CHROMIUM_DIR=$(find /opt/render/.cache/ms-playwright -type d -name "chromium-*" 2>/dev/null | head -n 1)
+
+if [ -n "$CHROMIUM_DIR" ]; then
+    echo "✅ Chromium found at: $CHROMIUM_DIR"
+    ls -la "$CHROMIUM_DIR/"
+    echo "✅ Build completed successfully!"
 else
     echo "❌ ERROR: Chromium NOT installed!"
-    ls -la /opt/render/.cache/ms-playwright/ || echo "Cache directory not found"
+    echo "Contents of /opt/render/.cache/:"
+    ls -laR /opt/render/.cache/ 2>/dev/null || echo "Directory not accessible"
     exit 1
 fi
-
-echo "✅ Build completed successfully!"
