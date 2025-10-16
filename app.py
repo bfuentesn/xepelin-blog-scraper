@@ -14,18 +14,30 @@ from sheets_manager import GoogleSheetsManager
 # Load environment variables
 load_dotenv()
 
-# Set Playwright browser path for Render deployment
-if os.path.exists('/opt/render'):
-    # Running on Render - set browser path
-    browser_cache_path = '/opt/render/.cache/ms-playwright'
+# Set Playwright browser path for cloud deployment (Render or Railway)
+is_render = os.path.exists('/opt/render')
+is_railway = os.path.exists('/app') and not is_render
+
+if is_render or is_railway:
+    # Detect platform
+    platform = "Render" if is_render else "Railway"
+    
+    # Set browser path based on platform
+    if is_render:
+        browser_cache_path = '/opt/render/.cache/ms-playwright'
+    else:  # Railway
+        browser_cache_path = '/app/.cache/ms-playwright'
+    
     os.environ['PLAYWRIGHT_BROWSERS_PATH'] = browser_cache_path
+    print(f"🚀 Running on {platform}")
+    print(f"📍 Browser cache path: {browser_cache_path}")
     
     # Check if Chromium is installed, if not install it at runtime
     chromium_path = os.path.join(browser_cache_path, 'chromium-1091', 'chrome-linux', 'chrome')
     
     if not os.path.exists(chromium_path):
         print("\n" + "="*60)
-        print("⚠️  Chromium not found - Installing at runtime...")
+        print(f"⚠️  Chromium not found on {platform} - Installing at runtime...")
         print(f"Expected path: {chromium_path}")
         print("="*60 + "\n")
         
