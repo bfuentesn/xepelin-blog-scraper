@@ -15,9 +15,52 @@ from sheets_manager import GoogleSheetsManager
 load_dotenv()
 
 # Set Playwright browser path for Render deployment
-if os.path.exists('/opt/render/.cache/ms-playwright'):
-    os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '/opt/render/.cache/ms-playwright'
-    print(f"✅ Playwright browsers path set to: {os.environ['PLAYWRIGHT_BROWSERS_PATH']}")
+if os.path.exists('/opt/render'):
+    # Running on Render - set browser path
+    browser_cache_path = '/opt/render/.cache/ms-playwright'
+    os.environ['PLAYWRIGHT_BROWSERS_PATH'] = browser_cache_path
+    
+    # Check if Chromium is installed, if not install it at runtime
+    chromium_path = os.path.join(browser_cache_path, 'chromium-1091', 'chrome-linux', 'chrome')
+    
+    if not os.path.exists(chromium_path):
+        print("\n" + "="*60)
+        print("⚠️  Chromium not found - Installing at runtime...")
+        print(f"Expected path: {chromium_path}")
+        print("="*60 + "\n")
+        
+        try:
+            import subprocess
+            
+            # Create cache directory
+            os.makedirs(browser_cache_path, exist_ok=True)
+            print(f"📁 Created cache directory: {browser_cache_path}")
+            
+            # Install Chromium (this will take ~2 minutes on first startup)
+            print("⬇️  Downloading Chromium (153 MB)...")
+            print("⏳ This will take about 2 minutes on first startup...")
+            
+            result = subprocess.run(
+                ['python', '-m', 'playwright', 'install', 'chromium'],
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minutes timeout
+            )
+            
+            if result.returncode == 0:
+                print("✅ Chromium installed successfully at runtime!")
+                print(f"📍 Browser path: {browser_cache_path}")
+            else:
+                print(f"❌ Failed to install Chromium:")
+                print(f"STDOUT: {result.stdout}")
+                print(f"STDERR: {result.stderr}")
+        
+        except Exception as e:
+            print(f"❌ Error installing Chromium at runtime: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"✅ Chromium already installed at: {chromium_path}")
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # Support Spanish characters
