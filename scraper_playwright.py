@@ -89,26 +89,34 @@ class XepelinPlaywrightScraper:
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 time.sleep(3)  # Aumentado a 3 segundos para dar más tiempo a cargar
                 
+                # Contar posts actuales antes de hacer clic
+                current_posts = page.locator('a[href*="/blog/"][href*="-"]').count()
+                print(f"   📊 Posts visibles actualmente: {current_posts}")
+                
                 # Esperar a que aparezca el botón "Cargar más" después del scroll
                 # El botón se carga dinámicamente con JavaScript
                 try:
-                    # Esperar hasta 5 segundos a que el botón sea visible
+                    # Esperar hasta 8 segundos a que el botón sea visible
                     load_more_selector = 'button:has-text("Cargar más")'
-                    page.wait_for_selector(load_more_selector, timeout=5000, state='visible')
+                    page.wait_for_selector(load_more_selector, timeout=8000, state='visible')
                     
                     # Obtener el botón
                     load_more_button = page.locator(load_more_selector).first
                     
                     if load_more_button.is_visible():
-                        print(f"   ✅ Botón 'Cargar más' encontrado y visible")
-                        print(f"   Clic #{clicks + 1} en 'Cargar más'...")
+                        print(f"   ✅ Botón 'Cargar más' encontrado")
+                        print(f"   🖱️  Clic #{clicks + 1}...")
                         
                         # Hacer clic en el botón
                         load_more_button.click()
                         
-                        # Esperar a que carguen los nuevos posts
-                        time.sleep(3)
+                        # Esperar a que carguen los nuevos posts (más tiempo)
+                        time.sleep(4)
                         clicks += 1
+                        
+                        # Verificar que se cargaron más posts
+                        new_posts = page.locator('a[href*="/blog/"][href*="-"]').count()
+                        print(f"   📊 Posts después del clic: {new_posts} (+{new_posts - current_posts})")
                     else:
                         print(f"   ℹ️  Botón existe pero no es visible (intentos: {clicks})")
                         break
@@ -116,7 +124,7 @@ class XepelinPlaywrightScraper:
                 except Exception as e:
                     # El botón no apareció, significa que ya no hay más posts
                     if "Timeout" in str(e):
-                        print(f"   ✅ No hay más posts para cargar (timeout esperando botón)")
+                        print(f"   ✅ No hay más posts para cargar (no se encontró botón después de {clicks} clics)")
                     else:
                         print(f"   ⚠️  Error buscando botón: {str(e)[:100]}")
                     break
@@ -360,17 +368,20 @@ class XepelinPlaywrightScraper:
             page.goto(url, wait_until="networkidle", timeout=60000)
             print("✅ Página cargada")
             
+            # Hacer un scroll inicial para activar el lazy loading
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            
             # Esperar a que aparezcan los enlaces de posts (con hyphens en la URL)
             print("⏳ Esperando a que se carguen los posts...")
             try:
-                # Esperar hasta 10 segundos a que aparezca al menos un enlace de post
-                page.wait_for_selector('a[href*="/blog/"][href*="-"]', timeout=10000)
+                # Esperar hasta 15 segundos a que aparezca al menos un enlace de post
+                page.wait_for_selector('a[href*="/blog/"][href*="-"]', timeout=15000)
                 print("✅ Posts encontrados en la página")
             except PlaywrightTimeout:
                 print("⚠️  Timeout esperando posts - intentando continuar de todos modos")
             
-            # Esperar un poco más para que el contenido se renderice completamente
-            page.wait_for_timeout(3000)
+            # Esperar más tiempo para que el contenido se renderice completamente
+            page.wait_for_timeout(5000)
             
             # Cargar todos los posts
             self._load_all_posts(page)
