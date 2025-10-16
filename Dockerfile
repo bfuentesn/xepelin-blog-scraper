@@ -33,9 +33,6 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libgobject-2.0-0 \
     libgio-2.0-0 \
-    # NSS libraries
-    libnssutil2 \
-    libsmime3 \
     # Additional
     libexpat1 \
     # Fonts
