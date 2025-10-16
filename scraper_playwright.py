@@ -234,6 +234,9 @@ class XepelinPlaywrightScraper:
         post_links = soup.find_all('a', href=lambda x: x and '/blog/' in x and '-' in x)
         print(f"📊 Encontrados {len(post_links)} enlaces potenciales")
         
+        # DEBUG: Print all candidate URLs before filtering
+        print(f"🔍 DEBUG: Raw candidate hrefs: {[link.get('href', '') for link in post_links]}")
+        
         # Primero recolectar todas las URLs
         urls_to_process = []
         for link in post_links:
@@ -398,9 +401,10 @@ def test_scraper():
         with XepelinPlaywrightScraper(headless=True) as scraper:
             # Probar con una categoría
             posts = scraper.scrape_category("Pymes")
-            
-            print("\n📋 Primeros 3 posts encontrados:")
-            for i, post in enumerate(posts[:3], 1):
+            post_links = soup.find_all('a', href=lambda x: x and '/blog/' in x and '-' in x)
+            print(f"� Encontrados {len(post_links)} enlaces potenciales")
+            # DEBUG: Print all candidate URLs before filtering
+            print(f"🔍 DEBUG: Raw candidate hrefs: {[link.get('href', '') for link in post_links]}")
                 print(f"\n{i}. {post['Titular']}")
                 print(f"   Autor: {post['Autor']}")
                 print(f"   Fecha: {post['Fecha']}")
