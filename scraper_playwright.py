@@ -338,11 +338,20 @@ class XepelinPlaywrightScraper:
         try:
             # Navegar a la página de la categoría
             print(f"🌐 Navegando a {url}...")
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            page.goto(url, wait_until="networkidle", timeout=60000)
             print("✅ Página cargada")
             
-            # Esperar un poco para que el contenido se renderice
-            page.wait_for_timeout(1500)  # Reducido de 3000 a 1500ms para mayor velocidad
+            # Esperar a que aparezcan los enlaces de posts (con hyphens en la URL)
+            print("⏳ Esperando a que se carguen los posts...")
+            try:
+                # Esperar hasta 10 segundos a que aparezca al menos un enlace de post
+                page.wait_for_selector('a[href*="/blog/"][href*="-"]', timeout=10000)
+                print("✅ Posts encontrados en la página")
+            except PlaywrightTimeout:
+                print("⚠️  Timeout esperando posts - intentando continuar de todos modos")
+            
+            # Esperar un poco más para que el contenido se renderice completamente
+            page.wait_for_timeout(3000)
             
             # Cargar todos los posts
             self._load_all_posts(page)
