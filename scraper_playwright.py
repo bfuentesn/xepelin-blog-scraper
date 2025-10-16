@@ -87,19 +87,44 @@ class XepelinPlaywrightScraper:
             try:
                 # Hacer scroll hasta el final de la página
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                time.sleep(2)  # Esperar a que cargue el contenido
+                time.sleep(3)  # Aumentado a 3 segundos para dar más tiempo a cargar
                 
-                # Buscar el botón "Cargar más"
-                load_more_button = page.locator('button:has-text("Cargar más")').first
+                # DEBUG: Verificar cuántos botones hay en la página
+                all_buttons = page.locator('button').all()
+                print(f"   🔍 DEBUG: Total buttons found: {len(all_buttons)}")
+                
+                # Buscar el botón "Cargar más" con diferentes estrategias
+                load_more_button = None
+                
+                # Estrategia 1: Texto exacto "Cargar más"
+                button1 = page.locator('button:has-text("Cargar más")').first
+                if button1.count() > 0:
+                    load_more_button = button1
+                    print(f"   ✅ Botón encontrado con estrategia 1")
+                
+                # Estrategia 2: Texto que contenga "Cargar"
+                if not load_more_button:
+                    button2 = page.locator('button:text-matches(".*[Cc]argar.*", "i")').first
+                    if button2.count() > 0:
+                        load_more_button = button2
+                        print(f"   ✅ Botón encontrado con estrategia 2")
+                
+                # Estrategia 3: Texto que contenga "more" o "más"
+                if not load_more_button:
+                    button3 = page.locator('button:text-matches(".*(more|más).*", "i")').first
+                    if button3.count() > 0:
+                        load_more_button = button3
+                        print(f"   ✅ Botón encontrado con estrategia 3")
                 
                 # Verificar si el botón existe y es visible
-                if load_more_button.is_visible(timeout=3000):
-                    print(f"   Clic #{clicks + 1} en 'Cargar más'...")
+                if load_more_button and load_more_button.is_visible(timeout=1000):
+                    button_text = load_more_button.inner_text()
+                    print(f"   Clic #{clicks + 1} en '{button_text}'...")
                     load_more_button.click()
-                    time.sleep(2)  # Esperar a que carguen los nuevos posts
+                    time.sleep(3)  # Esperar a que carguen los nuevos posts
                     clicks += 1
                 else:
-                    print("✅ No hay más posts para cargar")
+                    print(f"   ℹ️  No se encontró botón 'Cargar más' visible (intentos: {clicks})")
                     break
                     
             except PlaywrightTimeout:
