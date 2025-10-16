@@ -14,6 +14,11 @@ from sheets_manager import GoogleSheetsManager
 # Load environment variables
 load_dotenv()
 
+# Set Playwright browser path for Render deployment
+if os.path.exists('/opt/render/.cache/ms-playwright'):
+    os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '/opt/render/.cache/ms-playwright'
+    print(f"✅ Playwright browsers path set to: {os.environ['PLAYWRIGHT_BROWSERS_PATH']}")
+
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # Support Spanish characters
 
@@ -141,19 +146,18 @@ def home():
             "/scrape": {
                 "method": "POST",
                 "description": "Scrape blog posts from a category",
-                "parameters": {
-                    "categoria": "Category name (e.g., 'Pymes y Negocios', 'Fintech')",
+                "required_parameters": {
+                    "categoria": "Category name (e.g., 'Pymes', 'Noticias', 'Corporativos')",
                     "webhook": "Webhook URL to receive results"
-                },
-                "optional_parameters": {
-                    "email": "Email for webhook response (default from env)",
-                    "sheet_url": "Existing Google Sheet URL to write data (creates new if not provided)",
-                    "scrape_all": "Set to true to scrape all categories (bonus feature)"
                 }
             },
             "/categories": {
                 "method": "GET",
                 "description": "Get list of available categories"
+            },
+            "/test-playwright": {
+                "method": "GET",
+                "description": "Test if Playwright is working correctly"
             },
             "/health": {
                 "method": "GET",
@@ -161,9 +165,9 @@ def home():
             }
         },
         "example": {
-            "curl": """curl -X POST 'http://YOUR_SERVER:5000/scrape' \\
+            "curl": """curl -X POST 'https://xepelin-blog-scraper-0af5.onrender.com/scrape' \\
   -H 'Content-Type: application/json' \\
-  -d '{"categoria":"Pymes","webhook":"https://hooks.zapier.com/hooks/catch/11217441/bfemddr/"}'"""
+  -d '{"categoria":"Noticias","webhook":"https://hooks.zapier.com/hooks/catch/11217441/bfemddr/"}'"""
         }
     }), 200
 
@@ -226,11 +230,9 @@ def scrape_blog():
     
     Expected JSON body:
     {
-        "categoria": "Category name",
-        "webhook": "Webhook URL",
-        "email": "your@email.com" (optional),
-        "sheet_url": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/" (optional),
-        "scrape_all": false (optional, bonus feature)
+        "categoria": "Category name" (required if not scrape_all),
+        "webhook": "Webhook URL" (required),
+        "scrape_all": true/false (optional, default: false)
     }
     """
     try:
@@ -252,59 +254,52 @@ def scrape_blog():
             }), 400
         
         # Category is required unless scrape_all is true
-        if not scrape_all:
-            category = data.get('categoria')
-            if not category:
+        if scrape_all:
+            categoria = "all"
+        else:
+            categoria = data.get('categoria')
+            if not categoria:
                 return jsonify({
                     "error": "Missing required parameter: 'categoria' (or set 'scrape_all': true)"
                 }), 400
-        else:
-            category = "all"
-        
-        # Get email (from request or environment)
-        email = data.get('email', os.getenv('YOUR_EMAIL', 'benjamin.fuentes@uc.cl'))
-        
-        # Get optional sheet_url
-        sheet_url = data.get('sheet_url')
-        
-        # Validate category if not scraping all
-        if not scrape_all:
+            
+            # Validate category
             available_categories = list(XepelinPlaywrightScraper.CATEGORIES.keys())
             
-            # Check if category is valid (case insensitive)
-            if category not in available_categories:
+            if categoria not in available_categories:
                 return jsonify({
-                    "error": f"Invalid category: '{category}'",
+                    "error": f"Invalid category: '{categoria}'",
                     "available_categories": available_categories
                 }), 400
+        
+        # Use default email from environment
+        email = os.getenv('YOUR_EMAIL', 'benjamin.fuentes@uc.cl')
+        
+        # Use default sheet URL (will be overwritten each time)
+        sheet_url = "https://docs.google.com/spreadsheets/d/17JhWF2_3DMt_jRllzKQp7DuKNcHGfYDJ6u5DeBsYHR8/"
         
         # Start background job
         thread = threading.Thread(
             target=process_scraping_job,
-            args=(category, webhook_url, email, scrape_all, sheet_url)
+            args=(categoria, webhook_url, email, scrape_all, sheet_url)
         )
         thread.daemon = True
         thread.start()
         
         # Return immediate response
-        response_data = {
+        response = {
             "status": "accepted",
             "message": "Scraping job started. Results will be sent to webhook when complete.",
-            "webhook": webhook_url,
-            "email": email
+            "webhook": webhook_url
         }
         
         if scrape_all:
-            response_data["mode"] = "all_categories"
-            response_data["info"] = "Scraping all blog categories (bonus feature)"
+            response["mode"] = "all_categories"
+            response["info"] = "Scraping all 6 categories (654 posts total, ~25 min)"
         else:
-            response_data["categoria"] = category
+            response["categoria"] = categoria
         
-        if sheet_url:
-            response_data["sheet_url"] = sheet_url
-            response_data["note"] = "Using existing Google Sheet"
-        
-        return jsonify(response_data), 202
+        return jsonify(response), 202
     
     except Exception as e:
         return jsonify({
