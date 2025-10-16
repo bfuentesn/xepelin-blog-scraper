@@ -78,55 +78,86 @@ class XepelinPlaywrightScraper:
         Args:
             page: Página de Playwright
         """
-        max_clicks = 100  # Límite de seguridad para evitar loops infinitos (aumentado para obtener más posts)
+        max_clicks = 100  # Límite de seguridad para evitar loops infinitos
         clicks = 0
+        no_change_count = 0  # Contador de iteraciones sin cambios
         
         print("🔄 Cargando todos los posts...")
         
         while clicks < max_clicks:
             try:
+                # Contar posts antes del scroll
+                posts_before = page.locator('a[href*="/blog/"][href*="-"]').count()
+                print(f"   📊 Posts antes del scroll: {posts_before}")
+                
                 # Hacer scroll hasta el final de la página
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                time.sleep(3)  # Aumentado a 3 segundos para dar más tiempo a cargar
+                print(f"   ⬇️  Scroll al final de la página...")
                 
-                # Contar posts actuales antes de hacer clic
-                current_posts = page.locator('a[href*="/blog/"][href*="-"]').count()
-                print(f"   📊 Posts visibles actualmente: {current_posts}")
+                # Esperar generosamente a que se cargue contenido
+                time.sleep(5)
                 
-                # Esperar a que aparezca el botón "Cargar más" después del scroll
-                # El botón se carga dinámicamente con JavaScript
-                try:
-                    # Esperar hasta 8 segundos a que el botón sea visible
-                    load_more_selector = 'button:has-text("Cargar más")'
-                    page.wait_for_selector(load_more_selector, timeout=8000, state='visible')
-                    
-                    # Obtener el botón
-                    load_more_button = page.locator(load_more_selector).first
-                    
-                    if load_more_button.is_visible():
-                        print(f"   ✅ Botón 'Cargar más' encontrado")
-                        print(f"   🖱️  Clic #{clicks + 1}...")
+                # Contar posts después del scroll
+                posts_after_scroll = page.locator('a[href*="/blog/"][href*="-"]').count()
+                print(f"   📊 Posts después del scroll: {posts_after_scroll}")
+                
+                # Si el scroll solo ya cargó más posts, continuar
+                if posts_after_scroll > posts_before:
+                    print(f"   ✅ Se cargaron {posts_after_scroll - posts_before} posts nuevos con el scroll")
+                    no_change_count = 0
+                    clicks += 1
+                    continue
+                
+                # Buscar el botón "Cargar más"
+                load_more_button = page.locator('button:has-text("Cargar más")').first
+                button_count = load_more_button.count()
+                
+                print(f"   🔍 Botones 'Cargar más' encontrados: {button_count}")
+                
+                if button_count > 0:
+                    try:
+                        # Verificar si es visible (sin timeout largo)
+                        is_visible = load_more_button.is_visible(timeout=2000)
+                        print(f"   👁️  Botón visible: {is_visible}")
                         
-                        # Hacer clic en el botón
-                        load_more_button.click()
-                        
-                        # Esperar a que carguen los nuevos posts (más tiempo)
-                        time.sleep(4)
-                        clicks += 1
-                        
-                        # Verificar que se cargaron más posts
-                        new_posts = page.locator('a[href*="/blog/"][href*="-"]').count()
-                        print(f"   📊 Posts después del clic: {new_posts} (+{new_posts - current_posts})")
-                    else:
-                        print(f"   ℹ️  Botón existe pero no es visible (intentos: {clicks})")
-                        break
-                        
-                except Exception as e:
-                    # El botón no apareció, significa que ya no hay más posts
-                    if "Timeout" in str(e):
-                        print(f"   ✅ No hay más posts para cargar (no se encontró botón después de {clicks} clics)")
-                    else:
-                        print(f"   ⚠️  Error buscando botón: {str(e)[:100]}")
+                        if is_visible:
+                            print(f"   🖱️  Haciendo clic en 'Cargar más' (intento #{clicks + 1})...")
+                            
+                            # Scroll al botón para asegurar que esté en viewport
+                            load_more_button.scroll_into_view_if_needed()
+                            time.sleep(1)
+                            
+                            # Hacer clic
+                            load_more_button.click()
+                            print(f"   ✅ Clic realizado")
+                            
+                            # Esperar a que carguen nuevos posts
+                            time.sleep(5)
+                            
+                            # Verificar si se cargaron posts nuevos
+                            posts_after_click = page.locator('a[href*="/blog/"][href*="-"]').count()
+                            new_posts = posts_after_click - posts_after_scroll
+                            print(f"   📊 Posts después del clic: {posts_after_click} (+{new_posts})")
+                            
+                            if new_posts > 0:
+                                no_change_count = 0
+                                clicks += 1
+                            else:
+                                no_change_count += 1
+                                print(f"   ⚠️  No se cargaron posts nuevos (contador: {no_change_count})")
+                        else:
+                            print(f"   ℹ️  Botón encontrado pero no visible")
+                            no_change_count += 1
+                    except Exception as e:
+                        print(f"   ⚠️  Error al interactuar con botón: {str(e)[:150]}")
+                        no_change_count += 1
+                else:
+                    print(f"   ℹ️  No se encontró botón 'Cargar más'")
+                    no_change_count += 1
+                
+                # Si no hubo cambios en 3 iteraciones, terminar
+                if no_change_count >= 3:
+                    print(f"   ✅ Terminado: No hay más posts para cargar (sin cambios x{no_change_count})")
                     break
                     
             except PlaywrightTimeout:
