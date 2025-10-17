@@ -180,54 +180,7 @@ class XepelinPlaywrightScraper:
             
             # Extraer tiempo de lectura (debajo del título)
             # Buscar texto que contenga "min de lectura" o "min lectura"
-            tiempo_lectura = "N/A"
-            try:
-                # Buscar en todos los divs que contengan texto de lectura
-                all_text_divs = soup.find_all('div')
-                for div in all_text_divs:
-                    text = div.get_text(strip=True)
-                    # Buscar patrones como "7min de lectura", "7 min de lectura", etc.
-                    if 'min' in text.lower() and 'lectura' in text.lower():
-                        # Extraer solo el texto relevante
-                        if len(text) < 30:  # Filtrar para evitar párrafos largos
-                            tiempo_lectura = text.replace('min de lectura', ' min de lectura').replace('min lectura', ' min de lectura').strip()
-                            break
-            except Exception as e:
-                print(f"      ⚠️ Error extrayendo tiempo de lectura: {e}")
-                pass
-            
-            # Extraer autor (debajo de la imagen principal)
-            # Buscar el contenedor con clase 'flex gap-2' que contiene los divs del autor
-            autor = "N/A"
-            try:
-                author_container = soup.find('div', class_='flex gap-2')
-                if author_container:
-                    # Encontrar todos los divs con el texto del autor
-                    all_divs = author_container.find_all('div', class_='text-sm dark:text-text-disabled')
-                    autor_parts = [div.get_text(strip=True) for div in all_divs if div.get_text(strip=True)]
-                    if autor_parts:
-                        autor = ' '.join(autor_parts)  # "Lilia Valenzuela | SaaS Specialist"
-            except Exception:
-                pass
-            
-            # Extraer fecha de publicación desde metadata
-            # NOTA: El sitio web no expone fechas de publicación en metadata estándar
-            # ni en JSON-LD. Las fechas están embebidas en el contenido Next.js
-            # pero no son accesibles mediante scraping estándar.
-            fecha = "N/A"
-            try:
-                # Intentar obtener desde meta tag primero
-                meta_date = soup.find('meta', property='article:published_time')
-                if meta_date:
-                    fecha = meta_date.get('content', 'N/A')
-                else:
-                    # Intentar desde JSON-LD
-                    json_ld = soup.find('script', type='application/ld+json')
-                    if json_ld and json_ld.string:
-                        import json
-                        data = json.loads(json_ld.string)
-                        if isinstance(data, dict) and 'datePublished' in data:
-                            fecha = data['datePublished']
+                # ...existing code...
             except Exception:
                 pass
             
