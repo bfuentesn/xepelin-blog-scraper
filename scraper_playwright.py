@@ -179,15 +179,21 @@ class XepelinPlaywrightScraper:
                     break
             
             # Extraer tiempo de lectura (debajo del título)
-            # Usar el selector CSS específico: div con clase Text_body__snVk8
+            # Buscar texto que contenga "min de lectura" o "min lectura"
             tiempo_lectura = "N/A"
             try:
-                tiempo_div = soup.find('div', class_='Text_body__snVk8')
-                if tiempo_div:
-                    tiempo_lectura = tiempo_div.get_text(strip=True)
-                    # Limpiar espacios: "7min de lectura" -> "7 min de lectura"
-                    tiempo_lectura = tiempo_lectura.replace('min de lectura', ' min de lectura').strip()
-            except Exception:
+                # Buscar en todos los divs que contengan texto de lectura
+                all_text_divs = soup.find_all('div')
+                for div in all_text_divs:
+                    text = div.get_text(strip=True)
+                    # Buscar patrones como "7min de lectura", "7 min de lectura", etc.
+                    if 'min' in text.lower() and 'lectura' in text.lower():
+                        # Extraer solo el texto relevante
+                        if len(text) < 30:  # Filtrar para evitar párrafos largos
+                            tiempo_lectura = text.replace('min de lectura', ' min de lectura').replace('min lectura', ' min de lectura').strip()
+                            break
+            except Exception as e:
+                print(f"      ⚠️ Error extrayendo tiempo de lectura: {e}")
                 pass
             
             # Extraer autor (debajo de la imagen principal)
