@@ -179,8 +179,49 @@ class XepelinPlaywrightScraper:
                     break
             
             # Extraer tiempo de lectura (debajo del título)
-            # Buscar texto que contenga "min de lectura" o "min lectura"
-                # ...existing code...
+            # Usar el selector CSS específico: div con clase Text_body__snVk8
+            tiempo_lectura = "N/A"
+            try:
+                tiempo_div = soup.find('div', class_='Text_body__snVk8')
+                if tiempo_div:
+                    tiempo_lectura = tiempo_div.get_text(strip=True)
+                    # Limpiar espacios: "7min de lectura" -> "7 min de lectura"
+                    tiempo_lectura = tiempo_lectura.replace('min de lectura', ' min de lectura').strip()
+            except Exception:
+                pass
+            
+            # Extraer autor (debajo de la imagen principal)
+            # Buscar el contenedor con clase 'flex gap-2' que contiene los divs del autor
+            autor = "N/A"
+            try:
+                author_container = soup.find('div', class_='flex gap-2')
+                if author_container:
+                    # Encontrar todos los divs con el texto del autor
+                    all_divs = author_container.find_all('div', class_='text-sm dark:text-text-disabled')
+                    autor_parts = [div.get_text(strip=True) for div in all_divs if div.get_text(strip=True)]
+                    if autor_parts:
+                        autor = ' '.join(autor_parts)  # "Lilia Valenzuela | SaaS Specialist"
+            except Exception:
+                pass
+            
+            # Extraer fecha de publicación desde metadata
+            # NOTA: El sitio web no expone fechas de publicación en metadata estándar
+            # ni en JSON-LD. Las fechas están embebidas en el contenido Next.js
+            # pero no son accesibles mediante scraping estándar.
+            fecha = "N/A"
+            try:
+                # Intentar obtener desde meta tag primero
+                meta_date = soup.find('meta', property='article:published_time')
+                if meta_date:
+                    fecha = meta_date.get('content', 'N/A')
+                else:
+                    # Intentar desde JSON-LD
+                    json_ld = soup.find('script', type='application/ld+json')
+                    if json_ld and json_ld.string:
+                        import json
+                        data = json.loads(json_ld.string)
+                        if isinstance(data, dict) and 'datePublished' in data:
+                            fecha = data['datePublished']
             except Exception:
                 pass
             
@@ -192,22 +233,16 @@ class XepelinPlaywrightScraper:
                 "URL": url
             }
             
-                        # Buscar en todos los divs y spans que contengan texto de lectura
-                        for tag in ['div', 'span', 'p']:
-                            for el in soup.find_all(tag):
-                                text = el.get_text(strip=True)
-                                if 'min' in text.lower() and 'lectura' in text.lower():
-                                    if len(text) < 40:
-                                        tiempo_lectura = text.replace('min de lectura', ' min de lectura').replace('min lectura', ' min de lectura').strip()
-                                        break
-                            if tiempo_lectura != "N/A":
-                                break
-                        # Si no se encontró, buscar con regex
-                        if tiempo_lectura == "N/A":
-                            import re
-                            match = re.search(r'(\d+\s*min.*lectura)', html, re.IGNORECASE)
-                            if match:
-                                tiempo_lectura = match.group(1).strip()
+        except Exception as e:
+            print(f"⚠️ Error extrayendo detalles de {url}: {str(e)}")
+            # Retornar datos básicos en caso de error
+            return {
+                "Titular": url.split('/')[-1].replace('-', ' ').title(),
+                "Autor": "N/A",
+                "Tiempo de lectura": "N/A",
+                "Fecha": "N/A",
+                "URL": url
+            }
     
     def _extract_posts_from_page(self, initial_page: Page) -> List[Dict[str, str]]:
         """
@@ -215,30 +250,13 @@ class XepelinPlaywrightScraper:
         
         Args:
             initial_page: Página de Playwright con los posts cargados
-                        # Buscar por clase específica
-                        author_container = soup.find('div', class_='flex gap-2')
-                        if author_container:
-                            all_divs = author_container.find_all('div', class_='text-sm dark:text-text-disabled')
-                            autor_parts = [div.get_text(strip=True) for div in all_divs if div.get_text(strip=True)]
-                            if autor_parts:
-                                autor = ' '.join(autor_parts)
-                        # Si no se encontró, buscar en todos los divs y spans con palabras clave
-                        if autor == "N/A":
-                            for tag in ['div', 'span', 'p']:
-                                for el in soup.find_all(tag):
-                                    text = el.get_text(strip=True)
-                                    if any(x in text.lower() for x in ['autor', 'por', 'escrito por']):
-                                        if 3 < len(text) < 50:
-                                            autor = text
-                                            break
-                                if autor != "N/A":
-                                    break
-                        # Si no se encontró, buscar con regex
-                        if autor == "N/A":
-                            import re
-                            match = re.search(r'(por\s+[A-ZÁÉÍÓÚ][a-záéíóú]+(\s+[A-ZÁÉÍÓÚ][a-záéíóú]+)*)', html)
-                            if match:
-                                autor = match.group(1).strip()
+            
+        Returns:
+            Lista de diccionarios con la información de cada post
+        """
+        page = initial_page
+        # Obtener el HTML completo después de la carga dinámica
+        html_content = page.content()
         
         # Parsear con BeautifulSoup
         soup = BeautifulSoup(html_content, 'lxml')
