@@ -59,8 +59,34 @@ class XepelinPlaywrightScraper:
             print(f"⚠️  WARNING: Playwright browsers path does not exist: {browsers_path}")
         
         self.playwright = sync_playwright().start()
-        print("🎭 Launching Chromium browser...")
-        self.browser = self.playwright.chromium.launch(headless=self.headless)
+        print("🎭 Launching Chromium browser with memory optimizations...")
+        
+        # Lanzar navegador con flags de optimización de memoria
+        self.browser = self.playwright.chromium.launch(
+            headless=self.headless,
+            args=[
+                '--disable-dev-shm-usage',  # Evita problemas de memoria compartida
+                '--disable-gpu',  # Desactiva GPU (no necesaria para scraping)
+                '--no-sandbox',  # Necesario en algunos entornos containerizados
+                '--disable-software-rasterizer',
+                '--disable-extensions',
+                '--disable-background-networking',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-breakpad',
+                '--disable-component-extensions-with-background-pages',
+                '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+                '--disable-ipc-flooding-protection',
+                '--disable-renderer-backgrounding',
+                '--enable-features=NetworkService,NetworkServiceInProcess',
+                '--force-color-profile=srgb',
+                '--hide-scrollbars',
+                '--metrics-recording-only',
+                '--mute-audio',
+                '--no-first-run',
+                '--disable-blink-features=AutomationControlled'
+            ]
+        )
         print("✅ Chromium browser launched successfully")
         return self
     
@@ -308,13 +334,13 @@ class XepelinPlaywrightScraper:
         print(f"📋 Procesando {len(urls_to_process)} posts individuales...")
         
         # Ahora navegar a cada post para obtener detalles
-        # IMPORTANTE: Reiniciar página cada 100 posts para liberar memoria
+        # IMPORTANTE: Reiniciar página cada 50 posts para liberar memoria (reducido de 100 a 50)
         for i, url in enumerate(urls_to_process, 1):
             if i % 10 == 0:
                 print(f"   Procesados {i}/{len(urls_to_process)} posts...")
             
-            # Reiniciar página cada 100 posts para prevenir "object has been collected"
-            if i > 1 and i % 100 == 0 and i < len(urls_to_process):
+            # Reiniciar página cada 50 posts para prevenir OOM (reducido de 100 a 50)
+            if i > 1 and i % 50 == 0 and i < len(urls_to_process):
                 print(f"   🔄 Reiniciando página para liberar memoria (post {i}/{len(urls_to_process)})...")
                 try:
                     # Cerrar página actual
@@ -360,9 +386,12 @@ class XepelinPlaywrightScraper:
         if not self.browser:
             raise RuntimeError("Browser no inicializado. Usa 'with XepelinPlaywrightScraper():'")
         
-        # Crear una nueva página
+        # Crear una nueva página con optimizaciones de memoria
         page = self.browser.new_page()
         page.set_default_timeout(self.timeout)
+        
+        # Bloquear recursos innecesarios para ahorrar memoria y ancho de banda
+        page.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "stylesheet", "font", "media"] else route.continue_())
         
         try:
             # Navegar a la página de la categoría con estrategia más tolerante
