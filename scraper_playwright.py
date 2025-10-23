@@ -365,9 +365,16 @@ class XepelinPlaywrightScraper:
         page.set_default_timeout(self.timeout)
         
         try:
-            # Navegar a la página de la categoría
+            # Navegar a la página de la categoría con estrategia más tolerante
             print(f"🌐 Navegando a {url}...")
-            page.goto(url, wait_until="networkidle", timeout=60000)
+            try:
+                # Intentar con networkidle primero
+                page.goto(url, wait_until="networkidle", timeout=30000)
+            except Exception as e:
+                print(f"⚠️ Networkidle timeout, intentando con domcontentloaded...")
+                # Si falla, usar domcontentloaded que es más rápido
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(3000)  # Esperar 3 segundos adicionales
             print("✅ Página cargada")
             
             # Hacer un scroll inicial para activar el lazy loading
